@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>ELDRADO — フェル移動テスト</title>
+<title>ELDRADO v1.0 — Field & Battle Prototype</title>
 <style>
 *{box-sizing:border-box} body{margin:0;background:#091321;color:#f3e8d0;font-family:"Yu Mincho","Noto Serif JP",serif}
 main{max-width:1400px;margin:0 auto;padding:12px}
@@ -26,6 +26,7 @@ button:focus-visible{outline:2px solid #6ed5ff;outline-offset:2px}
 .toggle input{accent-color:#d94b4b;width:16px;height:16px}
 @media(max-width:600px){main{padding:5px}.top{align-items:flex-start;flex-direction:column}#state{margin-left:0}}
 </style>
+<meta name="description" content="ELDRADO single-player fantasy tactical RPG prototype. Six-element battle affinity system.">
 </head>
 <body><main>
 <div class="top"><div><h1>エルドラド遠征録</h1><div class="sub">フィールド探索 — 相棒アリス追従テスト v0.8</div></div><div class="sub">第1章　天空の遺跡・東の丘　☀ 晴れ</div></div>
@@ -418,6 +419,25 @@ const battleScreen=document.getElementById('battleScreen');
 const fieldFrame=document.querySelector('.frame');
 const fieldControls=document.querySelector('.controls');
 const fieldNote=document.querySelector('.note');
+// ELDRADO v1.0: six-element affinity master table.
+// Rows = attack element; columns = defender element.
+const ELEMENTS=['火','水','風','土','聖','闇'];
+const ELEMENT_RATE={
+ '火':{'火':0.5,'水':0.5,'風':1.5,'土':1.0,'聖':1.0,'闇':1.0},
+ '水':{'火':1.5,'水':0.5,'風':1.0,'土':0.5,'聖':1.0,'闇':1.0},
+ '風':{'火':1.0,'水':1.0,'風':0.5,'土':1.5,'聖':1.0,'闇':1.0},
+ '土':{'火':1.0,'水':1.5,'風':0.5,'土':0.5,'聖':1.0,'闇':1.0},
+ '聖':{'火':1.0,'水':1.0,'風':1.0,'土':1.0,'聖':0.5,'闇':1.5},
+ '闇':{'火':1.0,'水':1.0,'風':1.0,'土':1.0,'聖':1.5,'闇':0.5}
+};
+function elementMultiplier(attackElement,defenseElement){
+ return ELEMENT_RATE[attackElement]?.[defenseElement] ?? 1.0;
+}
+// Simple arithmetic: max(1, floor((ATK - DEF) * affinity)).
+function calculateDamage(attack,defense,attackElement='無',defenseElement='無'){
+ const base=Math.max(0,Number(attack)||0)-Math.max(0,Number(defense)||0);
+ return Math.max(1,Math.floor(base*elementMultiplier(attackElement,defenseElement)));
+}
 let battle={active:false,auto:true,phase:'wait',nextAt:0,fel:260,alice:190,gob:95,link:46,turn:1,ended:false};
 function battleLog(t){const box=document.getElementById('battleLog');box.insertAdjacentHTML('beforeend','<br>'+t);box.scrollTop=box.scrollHeight;}
 function battleBar(id,v,max){document.getElementById(id).style.width=Math.max(0,v/max*100)+'%';}
@@ -469,7 +489,7 @@ document.getElementById('battleAuto').addEventListener('click',()=>{
  battle.auto=!battle.auto; battleRender();
  if(battle.auto&&!battle.ended){battle.phase='ally';battle.nextAt=performance.now()+350;}
 });
-const battleCommand=(kind)=>{if(!battle.active||battle.ended)return; if(kind==='run'){battleLog('フェルたちは戦闘から離脱した。');battle.ended=true;return;} if(kind==='guard'){battle.fel=Math.min(260,battle.fel+10);battleLog('フェルは防御態勢をとった。HPが少し回復。');battleRender();return;} if(kind==='item'){battle.fel=Math.min(260,battle.fel+35);battleLog('回復薬を使用。フェルのHPが回復した。');battleRender();return;} const d=kind==='magic'?38:kind==='skill'?30:22;battle.gob=Math.max(0,battle.gob-d);battle.link=Math.min(100,battle.link+8);battleFloat('-'+d);battleLog((kind==='magic'?'アリスの魔法！':kind==='skill'?'フェルのスキル！':'フェルの攻撃！')+' 敵に '+d+' ダメージ！');battleRender();if(battle.gob<=0){battle.ended=true;battleLog('勝利！ 敵を撃破した！');}};
+const battleCommand=(kind)=>{if(!battle.active||battle.ended)return; if(kind==='run'){battleLog('フェルたちは戦闘から離脱した。');battle.ended=true;return;} if(kind==='guard'){battle.fel=Math.min(260,battle.fel+10);battleLog('フェルは防御態勢をとった。HPが少し回復。');battleRender();return;} if(kind==='item'){battle.fel=Math.min(260,battle.fel+35);battleLog('回復薬を使用。フェルのHPが回復した。');battleRender();return;} const atk=kind==='magic'?38:kind==='skill'?30:22;const d=calculateDamage(atk,5,kind==='magic'?'聖':'無','風');battle.gob=Math.max(0,battle.gob-d);battle.link=Math.min(100,battle.link+8);battleFloat('-'+d);battleLog((kind==='magic'?'アリスの魔法！':kind==='skill'?'フェルのスキル！':'フェルの攻撃！')+' 敵に '+d+' ダメージ！');battleRender();if(battle.gob<=0){battle.ended=true;battleLog('勝利！ 敵を撃破した！');}};
 [['battleAttack','attack'],['battleSkill','skill'],['battleMagic','magic'],['battleGuard','guard'],['battleItem','item'],['battleRun','run']].forEach(([id,k])=>document.getElementById(id).addEventListener('click',()=>battleCommand(k)));
 document.getElementById('battleReset').addEventListener('click',startBattle);
 
